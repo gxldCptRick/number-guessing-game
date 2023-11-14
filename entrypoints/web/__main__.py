@@ -3,10 +3,12 @@ from fastapi import FastAPI
 from pydantic.networks import IPvAnyAddress
 import uvicorn
 from entrypoints.web.legacy import router as legacy_routes
+from .new import router as new_routes
 
 
 app = FastAPI()
 app.include_router(legacy_routes)
+app.include_router(new_routes, prefix='/v1')
 
 
 @click.command()

@@ -1,39 +1,30 @@
 import uuid
-from fastapi import APIRouter, HTTPException
-from core.number_guessing_game import GameOverException, NumberGuessingGame
+from fastapi import APIRouter, Depends, HTTPException
+from core.number_guessing_game import GameOverException
 from core.view import NumberGuessingGameView
+from entrypoints.web.depenedency import get_manager
+from entrypoints.web.game_manager import GameManager
 
 from entrypoints.web.models import GameStartRequest, NumberGuessingGameGuess
 
 router = APIRouter()
-_instances: dict[uuid.UUID, NumberGuessingGameView] = {}
-
 
 @router.post('/game')
-def start_game(params: GameStartRequest):
-    id = uuid.uuid4()
-    game_instance = NumberGuessingGame(
-        params.min_value,
-        params.max_value,
-        params.max_guesses
-    )
+def start_game(params: GameStartRequest, manager: GameManager = Depends(get_manager)):
     
-    _instances[id] = NumberGuessingGameView(
-        game_instance,
-        params.range_threshold
-    )
-    
+    _id = manager.start_game(params, with_view=True)
     return {
-        'id': id
+        'id': _id
     }
 
 
 @router.post('/game/{game_id}')
-def submit_guess(game_id: uuid.UUID, guess: NumberGuessingGameGuess):
+def submit_guess(game_id: uuid.UUID, guess: NumberGuessingGameGuess, manager: GameManager = Depends(get_manager)):
+    game = manager.get_game_session_by_id(game_id)
     
-    if game_id not in _instances:
-        raise HTTPException(404, detail='Game not Found')
-    game = _instances.get(game_id)
+    if not isinstance(game, NumberGuessingGameView):
+        game = NumberGuessingGameView(game, 0.1)
+    
     min_val, max_val  = game.game._min_value, game.game._max_value
     value = guess.guess
     
@@ -48,12 +39,10 @@ def submit_guess(game_id: uuid.UUID, guess: NumberGuessingGameGuess):
 
 
 @router.get('/game/{game_id}')
-def get_game_status(game_id: uuid.UUID):
-    if game_id not in _instances:
-        raise HTTPException(404, 'Game not found')
-    
-    game = _instances.get(game_id)
-    
+def get_game_status(game_id: uuid.UUID, manager: GameManager = Depends(get_manager)):
+    game = manager.get_game_session_by_id(game_id)
+    if not isinstance(game, NumberGuessingGameView):
+        game = NumberGuessingGameView(game, 0.1)
     is_won = game.game.game_won
     remaining_turns = game.game.remaining_turns
     
