@@ -28,6 +28,7 @@ class NumberGuessingGame:
         self._calculate_answer = calculate_answer
         self._max_guesses = max_guesses
         # Game Fields that are used
+        self.previous_guesses: list[GuessResult] = []
         self.answer = 0
         self.game_won = True
         self.remaining_turns = 0
@@ -35,6 +36,7 @@ class NumberGuessingGame:
         
 
     def reset_game(self):
+        self.previous_guesses = []
         self.answer = self._calculate_answer(self._min_value, self._max_value)
         self.remaining_turns = self._max_guesses
         self.game_won = False
@@ -45,8 +47,11 @@ class NumberGuessingGame:
         
         self.remaining_turns -= 1
         result = GuessResult(guess=guess, difference=guess - self.answer, remaining_guesses=self.remaining_turns)
+
         if result.difference == 0:
             self.game_won = True
+
+        self.previous_guesses.append(result)
         return result
 
     @property
